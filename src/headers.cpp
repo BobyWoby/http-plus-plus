@@ -11,6 +11,14 @@
 Headers::Headers() { headers = {}; }
 
 void Headers::set(std::string key, std::string val) { headers[key] = val; }
+void Headers::add(std::string key, std::string val) {
+    if (headers.find(key) == headers.end()) {
+        // insert new header
+        headers[key] = val;
+    } else {
+        headers[key] = headers[key] + ", " + val;
+    }
+}
 
 Headers Headers::default_headers(size_t content_length){
     Headers out;

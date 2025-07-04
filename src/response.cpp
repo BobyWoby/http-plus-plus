@@ -3,7 +3,6 @@
 #include <boost/asio.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/bind/bind.hpp>
-#include <format>
 #include <iostream>
 #include <sstream>
 
@@ -37,7 +36,7 @@ void ResponseWriter::write_status_lines() {
             << std::to_string(int(res.status)) << " " << error_msg << "\r\n";
     msg = sstream.str();
 
-    std::cout << msg << "\n";
+    // std::cout << msg << "\n";
 
     size_t amt_written =
         boost::asio::write(_socket, boost::asio::buffer(msg, msg.length()));
@@ -55,7 +54,6 @@ void ResponseWriter::write_headers() {
         }
     }
     msg += "\r\n";
-    std::cout << msg << "\n";
     size_t amt_written =
         boost::asio::write(_socket, boost::asio::buffer(msg, msg.length()));
     if (amt_written > 0) {

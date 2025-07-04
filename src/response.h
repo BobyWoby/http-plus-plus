@@ -30,13 +30,14 @@ struct Response {
 
 class ResponseWriter : public std::enable_shared_from_this<ResponseWriter>{
    private:
-    tcp::socket _socket;
     ResponseWriterStatus _status;
 
     void handle_write(boost::system::error_code ec, size_t length);
 
    public:
+    tcp::socket _socket;
     Response res;
+
     ResponseWriter(tcp::socket &socket);
     void write_status_lines();
     void write_headers();

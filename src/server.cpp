@@ -2,22 +2,19 @@
 void Session::handle_read(const boost::system::error_code &ec,
                           std::size_t bytes_read) {
     if (!ec) {
-        // parse the  data here
-
         if (_request.state == RequestState::finished) {
             received_request();
-            // do_write(bytes_read);
         } else {
-            std::cout << _data.data() << "\n";
-            std::cout << (int)_request.state << "\n";
+            // std::cout << _data.data() << "\n";
+            // std::cout << (int)_request.state << "\n";
             ReturnError<int> err;
             while (true) {
                 err = _request.parse(_data, bytes_read);
                 if (err.error.has_value()) {
                     msg = "Error: ";
                     msg += err.error.value();
-                    std::cout << msg << "\n";
-                    std::cout << err.value << "\n";
+                    // std::cout << msg << "\n";
+                    // std::cout << err.value << "\n";
                     do_write(msg.length());
                     break;
                 }
@@ -34,7 +31,6 @@ void Session::handle_read(const boost::system::error_code &ec,
             }
             if (_request.state != RequestState::finished) {
                 received_request();
-                // do_read();
             }
         }
     } else {
@@ -44,7 +40,7 @@ void Session::handle_read(const boost::system::error_code &ec,
 }
 
 void Session::do_read() {
-    std::cout << "reading\n";
+    // std::cout << "reading\n";
     auto self(shared_from_this());
     _socket.async_read_some(
         boost::asio::buffer(_data, MAX_LENGTH),
@@ -55,7 +51,6 @@ void Session::do_read() {
 
 void Session::handle_write(boost::system::error_code ec, std::size_t length) {
     if (!ec) {
-        // do_read();
     }
 }
 
@@ -83,7 +78,6 @@ Server::Server(boost::asio::io_context &io, int port, const Handler &handler)
         if(handler == nullptr){
             std::cout << "handler is null!\n";
         }else{
-            std::cout << "valid handler\n";
             _handler = handler;
         }
         std::cout <<  "Server created on  port " << port << "\n";

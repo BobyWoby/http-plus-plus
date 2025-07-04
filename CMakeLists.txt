@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED On)
 find_package(Boost REQUIRED COMPONENTS thread)
 
 find_package(Catch2 3 REQUIRED)
-set(SOURCES src/request.cpp src/headers.cpp src/server.cpp src/response.cpp)
+set(SOURCES src/request.cpp src/headers.cpp src/server.cpp src/response.cpp src/http.cpp)
 
 add_library(http STATIC ${SOURCES})
 target_include_directories(http 

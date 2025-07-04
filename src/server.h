@@ -21,12 +21,12 @@ typedef std::function<void(ResponseWriter&, Request req)> Handler;
 
 class Session : public std::enable_shared_from_this<Session> {
    private:
-    tcp::socket _socket;
     std::array<char, MAX_LENGTH> _data;
     std::array<char, MAX_LENGTH> buffer;
     std::string msg;
     Request _request;
     Handler _handler;
+    tcp::socket _socket;
 
     inline void received_request() {
         ResponseWriter writer{_socket};

@@ -30,6 +30,7 @@ class Headers {
     std::map<std::string, std::string> headers;
     Headers();
     void set(std::string key, std::string val);
+    void add(std::string key, std::string val);
     std::string get(std::string key);
     static Headers default_headers(size_t content_length);
 
