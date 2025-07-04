@@ -9,7 +9,10 @@ find_package(Catch2 3 REQUIRED)
 set(SOURCES src/request.cpp src/headers.cpp src/server.cpp src/response.cpp)
 
 add_library(http STATIC ${SOURCES})
-
+target_include_directories(http 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 # Build the  tests
 add_executable(request_test src/request_test.cpp ${SOURCES})
 target_link_libraries(request_test PRIVATE Boost::headers Boost::thread
