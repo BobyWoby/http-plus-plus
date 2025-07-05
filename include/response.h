@@ -1,5 +1,6 @@
 #pragma once
 #include <boost/asio.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <memory>
 
 #include "common.h"
@@ -26,6 +27,26 @@ struct Response {
 
     Headers headers;
     std::string body;
+};
+
+struct ResponseReturn{
+    size_t bytes_read;
+    std::string str;
+    std::optional<std::string> error;
+};
+
+class ResponseStream{
+    public:
+    StatusCode status;
+    double http_version;
+    Headers headers;
+    boost::asio::streambuf *body_stream;
+    tcp::socket read_socket;
+    inline ResponseStream(tcp::socket &sock) : read_socket(std::move(sock)){
+
+    }
+
+    ResponseReturn Read();
 };
 
 class ResponseWriter : public std::enable_shared_from_this<ResponseWriter>{

@@ -1,11 +1,11 @@
-#include "request.h"
+#include "../include/request.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
 #include <string>
 
-#include "common.h"
-#include "headers.h"
+#include "../include/common.h"
+#include "../include/headers.h"
 
 TEST_CASE("Parsing Request Line", "[request_line]") {
     Request req;

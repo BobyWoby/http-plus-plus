@@ -5,25 +5,36 @@
 #include <exception>
 #include <iostream>
 
-#include "http.h"
-#include "request.h"
-#include "response.h"
-#include "server.h"
+#include "../include/http.h"
+#include "../include/request.h"
+#include "../include/response.h"
+#include "../include/server.h"
+#include "../include/html.h"
 
 boost::asio::io_context io;
 
 void handler(ResponseWriter &writer, Request req) {
     writer.res.status = StatusCode::OK;
     writer.res.body = "Hello World!\n";
+    std::string target = req.request_line.target;
     writer.res.headers = Headers::default_headers(writer.res.body.length());
+    if(target == "/httpbin/stream/100"){
+        Response res = http::Get("httpbin.org", "/stream/100", io);
+        writer.res.headers  =  res.headers;
+        writer.res.body = res.body;
+        // std::cout << res.body << "\n";
+    }else if(target == "/"){
+        writer.res.body = html::from_file("./assets/index.html");
+        // std::cout << writer.res.body;
+        writer.res.headers = Headers::default_headers(writer.res.body.length());
+        writer.res.headers.headers["Content-Type"] = "text/html";
+    }
 
     writer.write_status_lines();
     writer.write_headers();
     writer.write_body();
 
-    Response res = http::Get("httpbin.org", "/", io,  writer._socket);
     // http::Get_string("httpbin.org", "/ip", io, writer._socket);
-    std::cout <<res.body <<  "\n";
     
 }
 

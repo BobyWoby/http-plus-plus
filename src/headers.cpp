@@ -1,4 +1,4 @@
-#include "headers.h"
+#include "../include/headers.h"
 
 #include <cctype>
 #include <cstdio>
@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-#include "common.h"
+#include "../include/common.h"
 
 Headers::Headers() { headers = {}; }
 

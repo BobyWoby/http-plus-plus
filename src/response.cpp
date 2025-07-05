@@ -1,4 +1,4 @@
-#include "response.h"
+#include "../include/response.h"
 
 #include <boost/asio.hpp>
 #include <boost/asio/placeholders.hpp>
@@ -61,9 +61,12 @@ void ResponseWriter::write_headers() {
     }
 }
 void ResponseWriter::write_body() {
+    // std::cout << res.body <<"\n";
+    // std::cout << "length: "<< res.body.length() << "\n";
     size_t amt_written = boost::asio::write(
         _socket, boost::asio::buffer(res.body, res.body.length()));
-    if (amt_written > 0) {
-        _status = ResponseWriterStatus::finished;
-    }
+    // std::cout << "amt_written:" << amt_written;
+    // if (amt_written > 0) {
+    //     _status = ResponseWriterStatus::finished;
+    // }
 }

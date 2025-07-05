@@ -1,9 +1,9 @@
-#include "request.h"
+#include "../include/request.h"
 
 #include <iostream>
 #include <string>
 
-#include "common.h"
+#include "../include/common.h"
 
 ReturnError<int> Request::parseRequestLine(std::array<char, MAX_LENGTH> bytes,
                                            size_t bytes_length) {
