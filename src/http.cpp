@@ -67,20 +67,17 @@ void Client::handshake(Headers headers) {
     //     });
 }
 void Client::send_request(Headers headers) {
-    std::string get_request = method_ + " " + target_ +
-                              " HTTP/1.1\r\n"
-                              "Connection: close\r\n"
-                              "Host: " +
-                              host_ + "\r\n";
+    std::string get_request = method_ + " " + target_ + " HTTP/1.1\r\n"
+                              "Host: " + host_ + "\r\n";
     for (auto [key, val] : headers.headers) {
         get_request += key + ": " + val + "\r\n";
     }
-    get_request += "\r\n";
+    get_request += "Connection: close\r\n\r\n";
 
-    std::cout << get_request << "\n";
-    boost::asio::write(ssl_socket,
-                       boost::asio::buffer(get_request, get_request.length()));
-    receive_response(get_request.length());
+    std::cout << "\n" << get_request << "\n";
+    size_t length = boost::asio::write(
+        ssl_socket, boost::asio::buffer(get_request, get_request.length()));
+    receive_response(length);
 
     // boost::asio::async_write(
     //     ssl_socket, boost::asio::buffer(get_request, get_request.length()),
@@ -147,12 +144,12 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
                           "Connection: close\r\n"
                           "Host: " +
                           host_ + "\r\n";
-    for(auto  [key, val] : headers.headers){
-        request += key + ": " +  val + "\r\n";
+    for (auto [key, val] : headers.headers) {
+        request += key + ": " + val + "\r\n";
     }
     request += "\r\n";
 
-    std::cout << request << "\n";
+    std::cout << "\n" << request << "\n";
     boost::asio::write(socket_, boost::asio::buffer(request, request.length()));
 
     std::cout << "RESPONSE-------\n\n";

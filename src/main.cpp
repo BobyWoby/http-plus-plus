@@ -14,7 +14,6 @@
 boost::asio::io_context io;
 boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
 
-std::string APCA_API_BASE_URL = "https://paper-api.alpaca.markets";
 void handler(ResponseWriter &writer, Request req) {
     writer.res.status = StatusCode::OK;
     writer.res.body = "Hello World!\n";
@@ -40,10 +39,9 @@ int main() {
         // ctx.load_verify_file("./certs/cert.pem");
         ctx.set_default_verify_paths();
         Client client(io, ctx);
+        Headers headers;
         client.fetch("http://httpbin.org/stream/100", "GET",  Headers());
-        client.fetch("https://paper-api.alpaca.markets/v2/account", "GET", Headers());
-        // client.fetch("https://paper-api.alpaca.markets/v2/assets", "GET");
-        // client.fetch("https://google.com", "GET");
+        client.fetch("https://google.com", "GET",  Headers());
 
         Server s = Server(io, port, &handler);
         io.run();
