@@ -24,6 +24,9 @@ void ResponseWriter::write_status_lines() {
         case StatusCode::BAD_REQUEST:
             error_msg = "Bad Request";
             break;
+        case StatusCode::FORBIDDEN:
+            error_msg = "Forbidden";
+            break;
         case StatusCode::INTERNAL_ERROR:
             error_msg = "Internal Server Error";
             break;
