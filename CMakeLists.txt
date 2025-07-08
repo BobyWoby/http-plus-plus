@@ -9,10 +9,10 @@ find_package(OpenSSL REQUIRED)
 
 find_package(Catch2 3 REQUIRED)
 set(SOURCES src/request.cpp src/headers.cpp src/server.cpp src/response.cpp
-            src/http.cpp src/html.cpp)
+            src/http.cpp src/html.cpp src/https_server.cpp)
 
 set(HEADERS include/request.h include/headers.h include/server.h
-            include/response.h include/http.h include/html.h)
+            include/response.h include/http.h include/html.h include/https_server.h)
 
 add_library(http STATIC ${SOURCES})
 target_include_directories(
@@ -49,8 +49,8 @@ configure_package_config_file(
   "${CMAKE_CURRENT_BINARY_DIR}/httpConfig.cmake"
   INSTALL_DESTINATION lib/cmake/http)
 
-target_link_libraries(http PRIVATE Boost::headers Boost::thread
-                                   ${OPENSSL_LIBRARIES})
+# target_link_libraries(http PRIVATE 
+#                                    ${OPENSSL_LIBRARIES})
 # Install the Config files
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/httpConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/httpConfigVersion.cmake"

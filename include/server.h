@@ -17,7 +17,7 @@
 using boost::asio::ip::tcp;
 
 // probably  wanna pass in a response writer of some kind
-typedef std::function<void(ResponseWriter&, Request req)> Handler;
+typedef std::function<void(ResponseWriter<tcp::socket>&, Request req)> Handler;
 
 class Session : public std::enable_shared_from_this<Session> {
    private:
@@ -29,7 +29,7 @@ class Session : public std::enable_shared_from_this<Session> {
     tcp::socket _socket;
 
     inline void received_request() {
-        ResponseWriter writer{_socket};
+        ResponseWriter<tcp::socket> writer{_socket};
         _handler(writer, _request);
     }
 
@@ -46,7 +46,7 @@ class Session : public std::enable_shared_from_this<Session> {
                 std::cout << "nullptr passed in!\n";
             }
         }
-    void start() { do_read(); }
+    inline void start() { do_read(); }
 };
 
 class Server {

@@ -14,7 +14,7 @@
 boost::asio::io_context io;
 boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
 
-void handler(ResponseWriter &writer, Request req) {
+void handler(ResponseWriter<tcp::socket> &writer, Request req) {
     writer.res.status = StatusCode::OK;
     writer.res.body = "Hello World!\n";
     std::string target = req.request_line.target;

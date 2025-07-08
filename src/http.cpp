@@ -29,7 +29,7 @@ bool Client::verify_certificate(bool preverified,
     char subject_name[256];
     X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
     X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
-    std::cout << "Verifying " << subject_name << "\n";
+    // std::cout << "Verifying " << subject_name << "\n";
 
     return preverified;
 }
@@ -74,7 +74,7 @@ void Client::send_request(Headers headers) {
     }
     get_request += "Connection: close\r\n\r\n";
 
-    std::cout << "\n" << get_request << "\n";
+    // std::cout << "\n" << get_request << "\n";
     size_t length = boost::asio::write(
         ssl_socket, boost::asio::buffer(get_request, get_request.length()));
     receive_response(length);
@@ -103,13 +103,13 @@ Response Client::fetch(std::string url, std::string method, Headers headers) {
     if (res1.first == http_prefix.end()) {
         // it's an http request
         host_ = url.substr(http_prefix.length(), std::string::npos);
-        std::cout << host_ << "\n";
+        // std::cout << host_ << "\n";
         port_ = "80";
     } else if (res2.first == https_prefix.end()) {
         // it's an https request
-        std::cout << "https found\n";
+        // std::cout << "https found\n";
         host_ = url.substr(https_prefix.length(), std::string::npos);
-        std::cout << host_ << "\n";
+        // std::cout << host_ << "\n";
         port_ = "443";
     }
     size_t slash_pos = host_.find("/");
@@ -149,29 +149,29 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
     }
     request += "\r\n";
 
-    std::cout << "\n" << request << "\n";
+    // std::cout << "\n" << request << "\n";
     boost::asio::write(socket_, boost::asio::buffer(request, request.length()));
 
-    std::cout << "RESPONSE-------\n\n";
+    // std::cout << "RESPONSE-------\n\n";
     boost::asio::read_until(socket_, response,
                             "\r\n");  // this reads the  status line
 
     std::istream response_stream(&response);
     std::string http_version;
     response_stream >> http_version;
-    std::cout << "VERSION: " << http_version << "\n";
+    // std::cout << "VERSION: " << http_version << "\n";
     if (http_version.find("/") == std::string::npos) {
         std::cout << "invalid version!\n";
     }
     std::string version_str =
         http_version.substr(http_version.find("/") + 1, std::string::npos);
-    std::cout << "version_str: " << version_str << "\n";
+    // std::cout << "version_str: " << version_str << "\n";
     double version = std::stod(version_str);
     out.http_version = version;
 
     unsigned int status_code;
     response_stream >> status_code;
-    std::cout << "STATUS: " << status_code << "\n";
+    // std::cout << "STATUS: " << status_code << "\n";
     if (status_code) out.status = StatusCode(status_code);
 
     std::string status_message;
@@ -205,7 +205,7 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
     if (response.size() > 0) {
         std::istream(&response) >> body_buf;
         body += body_buf;
-        std::cout << body_buf;
+        // std::cout << body_buf;
     }
 
     // Read until EOF, writing data to output as we go.
@@ -214,14 +214,14 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
                              boost::asio::transfer_at_least(1), error)) {
         std::istream(&response) >> body_buf;
         body += body_buf;
-        std::cout << body_buf;
+        // std::cout << body_buf;
     }
     while (response.size() > 0) {
         std::istream(&response) >> body_buf;
         body += body_buf;
     }
     out.body = body;
-    std::cout << body << "\n";
+    // std::cout << body << "\n";
     socket_ = tcp::socket(io_);
     return out;
 }
@@ -239,21 +239,21 @@ Response Client::fetch_ssl(tcp::resolver::results_type endpoints,
 
 void Client::receive_response(size_t length) {
     tmp_res = Response();
-    std::cout << "RESPONSE-------\n\n";
+    // std::cout << "RESPONSE-------\n\n";
     boost::asio::read_until(ssl_socket, response,
                             "\r\n");  // this reads the  status line
 
     std::istream response_stream(&response);
     std::string http_version;
     response_stream >> http_version;
-    std::cout << "VERSION: " << http_version << "\n";
+    // std::cout << "VERSION: " << http_version << "\n";
     double version = std::stod(
         http_version.substr(http_version.find("/") + 1, std::string::npos));
     tmp_res.http_version = version;
 
     unsigned int status_code;
     response_stream >> status_code;
-    std::cout << "STATUS: " << status_code << "\n";
+    // std::cout << "STATUS: " << status_code << "\n";
     if (status_code) tmp_res.status = StatusCode(status_code);
 
     std::string status_message;
@@ -289,7 +289,7 @@ void Client::receive_response(size_t length) {
     if (response.size() > 0) {
         std::istream(&response) >> body_buf;
         body += body_buf;
-        std::cout << body_buf;
+        // std::cout << body_buf;
     }
 
     // Read until EOF, writing data to output as we go.
@@ -299,13 +299,13 @@ void Client::receive_response(size_t length) {
         // std::cout << &response;
         std::istream(&response) >> body_buf;
         body += body_buf;
-        std::cout << body_buf;
+        // std::cout << body_buf;
     }
     while (response.size() > 0) {
         std::istream(&response) >> body_buf;
         body += body_buf;
     }
-    std::cout << body << "\n";
+    // std::cout << body << "\n";
     tmp_res.body = body;
     // reset the socket
     ssl_socket = boost::asio::ssl::stream<tcp::socket>(io_, ctx_);

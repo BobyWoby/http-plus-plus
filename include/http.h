@@ -8,8 +8,8 @@
 
 #include "../include/response.h"
 
-constexpr std::string http_prefix("http://");
-constexpr std::string https_prefix("https://");
+const std::string http_prefix("http://");
+const std::string https_prefix("https://");
 
 using boost::asio::ip::tcp;
 class Client {
@@ -44,3 +44,11 @@ class Client {
     Response fetch(std::string url, std::string method, Headers headers);
     Client(boost::asio::io_context &io, boost::asio::ssl::context &ctx);
 };
+// GET /v2/account HTTP/1.1
+// Host: paper-api.alpaca.markets
+// User-Agent: curl/8.14.1
+// Accept: */*
+// APCA-API-KEY-ID: PK6PS7PQEZ6ZUS2SAOU3
+// APCA-API-SECRET-KEY: IYbpe2sUc8kKKKZzVHyn5zKXKVQTkqgkipLaotEi
+// Connection: close
+
