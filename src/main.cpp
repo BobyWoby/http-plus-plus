@@ -40,8 +40,8 @@ int main() {
         ctx.set_default_verify_paths();
         Client client(io, ctx);
         Headers headers;
-        client.fetch("http://httpbin.org/stream/100", "GET",  Headers());
-        client.fetch("https://google.com", "GET",  Headers());
+        client.fetch("http://httpbin.org/stream/100", "GET",  Headers(), "");
+        client.fetch("https://google.com", "GET");
 
         Server s = Server(io, port, &handler);
         io.run();

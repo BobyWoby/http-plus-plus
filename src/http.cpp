@@ -35,10 +35,10 @@ bool Client::verify_certificate(bool preverified,
 }
 
 void Client::connect(const tcp::resolver::results_type& endpoints,
-                     Headers headers) {
+                     Headers headers, std::string data) {
     boost::system::error_code ec;
     boost::asio::connect(ssl_socket.lowest_layer(), endpoints);
-    handshake(headers);
+    handshake(headers, data);
     // boost::asio::async_connect(
     //     ssl_socket.lowest_layer(), endpoints,
     //     [this](const boost::system::error_code ec, const tcp::endpoint& /**/)
@@ -52,9 +52,9 @@ void Client::connect(const tcp::resolver::results_type& endpoints,
     //     });
 }
 
-void Client::handshake(Headers headers) {
+void Client::handshake(Headers headers, std::string data) {
     ssl_socket.handshake(boost::asio::ssl::stream_base::client);
-    send_request(headers);
+    send_request(headers, data);
     // ssl_socket.async_handshake(
     //     boost::asio::ssl::stream_base::client,
     //     [this](const boost::system::error_code& ec) {
@@ -66,13 +66,16 @@ void Client::handshake(Headers headers) {
     //         }
     //     });
 }
-void Client::send_request(Headers headers) {
+void Client::send_request(Headers headers,  std::string data) {
     std::string get_request = method_ + " " + target_ + " HTTP/1.1\r\n"
                               "Host: " + host_ + "\r\n";
     for (auto [key, val] : headers.headers) {
         get_request += key + ": " + val + "\r\n";
     }
     get_request += "Connection: close\r\n\r\n";
+    if(data != ""){
+        get_request  += data;
+    }
 
     // std::cout << "\n" << get_request << "\n";
     size_t length = boost::asio::write(
@@ -91,7 +94,16 @@ void Client::send_request(Headers headers) {
     //     });
 }
 
-Response Client::fetch(std::string url, std::string method, Headers headers) {
+/**
+ * @brief sends a http/https request using the provided method and headers.
+ *
+ * @param url The full web url of  the endpoints (ex. https://myapi.com/resources/x)
+ * @param method The HTTP method that will be used (eg. GET, POST, PUT, etc.)
+ * @param headers Any addtional header information to be passed in. Defaults to empty;
+ * @param data Any data to be  sent to  the endpoint, mostly  for POST requests
+ * @return the response from the fetch request in a Response Object
+ */
+Response Client::fetch(std::string url, std::string method, Headers headers, std::string data) {
     Response out;
     method_ = method;
     target_ = "/";
@@ -121,13 +133,13 @@ Response Client::fetch(std::string url, std::string method, Headers headers) {
     auto endpoints = resolver_.resolve(host_, port_);
     if (port_ == "443") {
         try {
-            out = fetch_ssl(endpoints, headers);
+            out = fetch_ssl(endpoints, headers, data);
         } catch (std::exception& e) {
             std::cout << e.what() << "\n";
         }
     } else {
         try {
-            out = fetch_http(endpoints, headers);
+            out = fetch_http(endpoints, headers, data);
         } catch (std::exception& e) {
             std::cout << e.what() << "\n";
         }
@@ -136,7 +148,7 @@ Response Client::fetch(std::string url, std::string method, Headers headers) {
 }
 
 Response Client::fetch_http(tcp::resolver::results_type endpoints,
-                            Headers headers) {
+                            Headers headers, std::string data) {
     Response out;
     boost::asio::connect(socket_, endpoints);
     std::string request = method_ + " " + target_ +
@@ -148,6 +160,9 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
         request += key + ": " + val + "\r\n";
     }
     request += "\r\n";
+    if(data != ""){
+        request += data;
+    }
 
     // std::cout << "\n" << request << "\n";
     boost::asio::write(socket_, boost::asio::buffer(request, request.length()));
@@ -227,13 +242,13 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
 }
 
 Response Client::fetch_ssl(tcp::resolver::results_type endpoints,
-                           Headers headers) {
+                           Headers headers, std::string  data) {
     SSL_set_tlsext_host_name(ssl_socket.native_handle(), host_.c_str());
     ssl_socket.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_socket.set_verify_callback(std::bind(&Client::verify_certificate, this,
                                              std::placeholders::_1,
                                              std::placeholders::_2));
-    connect(endpoints, headers);
+    connect(endpoints, headers, data);
     return tmp_res;
 }
 

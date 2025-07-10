@@ -31,24 +31,16 @@ class Client {
     bool verify_certificate(bool preverified,
                             boost::asio::ssl::verify_context &ctx);
 
-    Response fetch_ssl(tcp::resolver::results_type endpoints, Headers headers);
-    Response fetch_http(tcp::resolver::results_type endpoints, Headers headers);
+    Response fetch_ssl(tcp::resolver::results_type endpoints, Headers headers, std::string data);
+    Response fetch_http(tcp::resolver::results_type endpoints, Headers headers, std::string data);
 
-    void connect(const tcp::resolver::results_type &endpoints, Headers headers);
-    void handshake(Headers headers);
-    void send_request(Headers headers);
+    void connect(const tcp::resolver::results_type &endpoints, Headers headers, std::string data);
+    void handshake(Headers headers, std::string data);
+    void send_request(Headers headers, std::string data);
     void receive_response(size_t length);
 
    public:
     // Response fetch(std::string url, std::string method);
-    Response fetch(std::string url, std::string method, Headers headers);
+    Response fetch(std::string url, std::string method, Headers headers = Headers(), std::string data = "");
     Client(boost::asio::io_context &io, boost::asio::ssl::context &ctx);
 };
-// GET /v2/account HTTP/1.1
-// Host: paper-api.alpaca.markets
-// User-Agent: curl/8.14.1
-// Accept: */*
-// APCA-API-KEY-ID: PK6PS7PQEZ6ZUS2SAOU3
-// APCA-API-SECRET-KEY: IYbpe2sUc8kKKKZzVHyn5zKXKVQTkqgkipLaotEi
-// Connection: close
-
