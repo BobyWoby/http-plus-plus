@@ -58,6 +58,51 @@ inline std::string trim(std::string str) {
 inline std::array<char, MAX_LENGTH> slice(std::array<char, MAX_LENGTH> bytes,
                                           size_t begin) {
     std::array<char, MAX_LENGTH> out;
-    std::copy(bytes.begin()+begin, bytes.end(),  out.begin());
+    std::copy(bytes.begin() + begin, bytes.end(), out.begin());
     return out;
+}
+
+inline std::string escape_string(const std::string& input) {
+    std::string result;
+    for (char c : input) {
+        switch (c) {
+            case '\n':
+                result += "\\n";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\v':
+                result += "\\v";
+                break;
+            case '\f':
+                result += "\\f";
+                break;
+            case '\a':
+                result += "\\a";
+                break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '\"':
+                result += "\\\"";
+                break;
+            case '\'':
+                result += "\\\'";
+                break;
+            default:
+                if (std::isprint(static_cast<unsigned char>(c))) {
+                    result += c;
+                } else {
+                    char buf[5];
+                    std::snprintf(buf, sizeof(buf), "\\x%02x",
+                                  static_cast<unsigned char>(c));
+                    result += buf;
+                }
+        }
+    }
+    return result;
 }

@@ -39,7 +39,10 @@ class Client {
     void send_request(Headers headers, std::string data);
     void receive_response(size_t length);
 
+    void ssl_receive_standard(); // non-chunked encoding
+    void ssl_receive_chunked();
    public:
+    bool debug_mode = false;
     // Response fetch(std::string url, std::string method);
     Response fetch(std::string url, std::string method, Headers headers = Headers(), std::string data = "");
     Client(boost::asio::io_context &io, boost::asio::ssl::context &ctx);

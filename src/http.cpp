@@ -66,15 +66,20 @@ void Client::handshake(Headers headers, std::string data) {
     //         }
     //     });
 }
-void Client::send_request(Headers headers,  std::string data) {
-    std::string get_request = method_ + " " + target_ + " HTTP/1.1\r\n"
-                              "Host: " + host_ + "\r\n";
+void Client::send_request(Headers headers, std::string data) {
+    std::string get_request = method_ + " " + target_ +
+                              " HTTP/1.1\r\n"
+                              "Host: " +
+                              host_ + "\r\n";
     for (auto [key, val] : headers.headers) {
         get_request += key + ": " + val + "\r\n";
     }
     get_request += "Connection: close\r\n\r\n";
-    if(data != ""){
-        get_request  += data;
+    if (data != "") {
+        get_request += data;
+    }
+    if (debug_mode) {
+        std::cout << get_request << "\n";
     }
 
     // std::cout << "\n" << get_request << "\n";
@@ -97,13 +102,16 @@ void Client::send_request(Headers headers,  std::string data) {
 /**
  * @brief sends a http/https request using the provided method and headers.
  *
- * @param url The full web url of  the endpoints (ex. https://myapi.com/resources/x)
+ * @param url The full web url of  the endpoints (ex.
+ * https://myapi.com/resources/x)
  * @param method The HTTP method that will be used (eg. GET, POST, PUT, etc.)
- * @param headers Any addtional header information to be passed in. Defaults to empty;
+ * @param headers Any addtional header information to be passed in. Defaults to
+ * empty;
  * @param data Any data to be  sent to  the endpoint, mostly  for POST requests
  * @return the response from the fetch request in a Response Object
  */
-Response Client::fetch(std::string url, std::string method, Headers headers, std::string data) {
+Response Client::fetch(std::string url, std::string method, Headers headers,
+                       std::string data) {
     Response out;
     method_ = method;
     target_ = "/";
@@ -160,7 +168,7 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
         request += key + ": " + val + "\r\n";
     }
     request += "\r\n";
-    if(data != ""){
+    if (data != "") {
         request += data;
     }
 
@@ -242,7 +250,7 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
 }
 
 Response Client::fetch_ssl(tcp::resolver::results_type endpoints,
-                           Headers headers, std::string  data) {
+                           Headers headers, std::string data) {
     SSL_set_tlsext_host_name(ssl_socket.native_handle(), host_.c_str());
     ssl_socket.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_socket.set_verify_callback(std::bind(&Client::verify_certificate, this,
@@ -291,19 +299,143 @@ void Client::receive_response(size_t length) {
             std::cout << "invalid  colon pos\n";
             break;
         }
-        std::string field_name = header.substr(0, colon_pos);
+        std::string field_name = trim(header.substr(0, colon_pos));
         std::string field_value =
-            header.substr(colon_pos + 1, std::string::npos);
-        tmp_res.headers.add(field_name, field_value);
-        // std::cout << header << "\n";
-    }
-    // std::cout << "\n";
+            trim(header.substr(colon_pos + 1, std::string::npos));
 
-    std::string body_buf, body;
+        tmp_res.headers.add(field_name, field_value);
+        if (debug_mode) {
+            std::cout << field_name << ": "
+                      << tmp_res.headers.headers[field_name] << "\n";
+        }
+    }
+    bool chunked = false;
+    if (tmp_res.headers.headers.find("Transfer-Encoding") !=
+        tmp_res.headers.headers.end()) {
+        if (tmp_res.headers.headers["Transfer-Encoding"] == "chunked") {
+            chunked = true;
+        }
+    }
+    if (!chunked) {
+        if (debug_mode) {
+            std::cout << "standard\n";
+        }
+        ssl_receive_standard();
+    } else {
+        if (debug_mode) {
+            std::cout << "chunked\n";
+        }
+        ssl_receive_chunked();
+    }
+}
+
+void Client::ssl_receive_chunked() {
+    std::string body_buf{""}, body{""}, tmp_buf{""};
+    int bytes_in_message = -1;
+    boost::system::error_code error;
+    // check if theres  anything  still in response?
+    if (response.size() > 0) {
+        std::istream(&response) >> body_buf;
+        // if we  can't find the \r\n then we need more data
+        if (body_buf.find("\r\n") != std::string::npos) {
+            // if we can find it then  its the bytes in the message and we need
+            // to read it
+
+            std::cout << "first loop: "
+                      << body_buf.substr(0, body_buf.find("\r\n")) << "\n";
+
+            bytes_in_message = std::stoi(
+                body_buf.substr(0, body_buf.find("\r\n")), nullptr, 16);
+
+            std::cout << bytes_in_message << "\n";
+            body_buf.erase(0, body_buf.find("\r\n") + 2);
+            body += body_buf;
+            bytes_in_message -= body.length();
+            std::cout << "body1"<< body  << "\n";
+        } else {
+            // read until the  first \r\n, the response might have more  data
+            // but bytes_read will contain until the end of the \r\n
+            size_t bytes_read =
+                boost::asio::read_until(ssl_socket, response, "\r\n");
+            std::istream(&response) >> tmp_buf;
+            body_buf += tmp_buf.substr(0, bytes_read - 2);
+            tmp_buf.erase(0, bytes_read - 2);
+
+            std::cout << "second loop: " << body_buf << "\n";
+            bytes_in_message = std::stoi(body_buf, nullptr, 16);
+            std::cout << bytes_in_message << "\n";
+            body += tmp_buf;
+            std::cout << "body2: " << body  << "\n";
+            bytes_in_message -= body.length();
+
+            body_buf = "";
+            tmp_buf = "";
+        }
+    }
+
+    while (bytes_in_message > 0) {
+        // read until  we get the 0\r\n\r\n line
+        // size_t bytes_read =
+        //     boost::asio::read(ssl_socket, response,
+        //                       boost::asio::transfer_exactly(bytes_in_message+2));
+        size_t bytes_read = boost::asio::read_until(ssl_socket, response, "\r\n");
+        std::cout << "\n\nbytes_read: " << bytes_read << "\n";
+        std::cout << "response size: " << response.size() << "\n";
+
+        std::ostringstream ss = {};
+        ss << std::istream(&response).rdbuf();
+        tmp_buf = ss.str();
+        std::cout << "tmp_buf: " <<escape_string(tmp_buf)  << "\n";
+        if(tmp_buf == "0\r\n\r\n"){
+            break;
+        }
+
+        body_buf += tmp_buf.substr(0, bytes_read - 2);
+        tmp_buf.erase(0, bytes_read);
+
+
+        body += body_buf;
+        // std::cout << "body_buf: " <<escape_string(body_buf)  << "\n";
+        body_buf = tmp_buf;
+        tmp_buf = "";
+        response.consume(response.size());
+
+        // read the next byte_length
+        bytes_read = boost::asio::read_until(ssl_socket, response, "\r\n");
+        std::cout << "--------next slice --------\n";
+        std::cout << "bytes read: " << bytes_read << "\n";
+        std::cout << "response size: " << response.size() << "\n";
+
+        ss = {};
+        ss << std::istream(&response).rdbuf();
+        tmp_buf = ss.str();
+        // std::cout << "tmp_buf: " << (tmp_buf.length()) << "\n";
+
+        body_buf += tmp_buf.substr(0, bytes_read - 2);
+        tmp_buf.erase(0, bytes_read); 
+        std::cout << "body_buf (number): " << escape_string(body_buf) << "\n";
+        std::cout << "byte to read (hex)" << body_buf << "\n";
+        std::cout  << "tmp_buf: " << escape_string(tmp_buf) << "\n";
+        bytes_in_message = std::stoi(body_buf, nullptr, 16);
+        std::cout << "bytes to  read: " << bytes_in_message << "\n";
+        body += tmp_buf;
+
+        body_buf = "";
+        tmp_buf = "";
+    }
+    std::cout << "\n\n" <<  body <<  "\n\n";
+    tmp_res.body = body;
+    // reset the socket
+    ssl_socket = boost::asio::ssl::stream<tcp::socket>(io_, ctx_);
+}
+
+void Client::ssl_receive_standard() {
+    std::string body_buf{""}, body{""};
     // Write whatever content we already have to output.
     if (response.size() > 0) {
         std::istream(&response) >> body_buf;
         body += body_buf;
+        body_buf = "";
         // std::cout << body_buf;
     }
 
@@ -314,6 +446,7 @@ void Client::receive_response(size_t length) {
         // std::cout << &response;
         std::istream(&response) >> body_buf;
         body += body_buf;
+        body_buf = "";
         // std::cout << body_buf;
     }
     while (response.size() > 0) {
