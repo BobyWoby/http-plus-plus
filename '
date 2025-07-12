@@ -188,9 +188,7 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
     }
     std::string version_str =
         http_version.substr(http_version.find("/") + 1, std::string::npos);
-    if (debug_mode) {
-        std::cout << "version_str: " << version_str << "\n";
-    }
+    // std::cout << "version_str: " << version_str << "\n";
     double version = std::stod(version_str);
     out.http_version = version;
 
@@ -265,22 +263,15 @@ Response Client::fetch_ssl(tcp::resolver::results_type endpoints,
 void Client::receive_response(size_t length) {
     tmp_res = Response();
     // std::cout << "RESPONSE-------\n\n";
-    size_t bytes_read = boost::asio::read_until(ssl_socket, response,
+    boost::asio::read_until(ssl_socket, response,
                             "\r\n");  // this reads the  status line
 
     std::istream response_stream(&response);
     std::string http_version;
     response_stream >> http_version;
-    std::string version_str =
-        http_version.substr(http_version.find("/") + 1, std::string::npos);
-
-    if (debug_mode) {
-        std::cout << "response size" << response.size() << "\n";
-        std::cout << "response_stream size" << response.size() << "\n";
-        std::cout << "VERSION: " << http_version << "\n";
-        std::cout << version_str << "\n";
-    }
-    double version = std::stod(version_str);
+    // std::cout << "VERSION: " << http_version << "\n";
+    double version = std::stod(
+        http_version.substr(http_version.find("/") + 1, std::string::npos));
     tmp_res.http_version = version;
 
     unsigned int status_code;
@@ -340,84 +331,110 @@ void Client::receive_response(size_t length) {
 
 void Client::ssl_receive_chunked() {
     std::string body_buf{""}, body{""}, tmp_buf{""};
-    int chunk_size = 1;
-    bool found_length = false;
+    int bytes_in_message = -1;
     boost::system::error_code error;
+    // check if theres  anything  still in response?
+    if (response.size() > 0) {
+        std::istream(&response) >> body_buf;
+        // if we  can't find the \r\n then we need more data
+        if (body_buf.find("\r\n") != std::string::npos) {
+            // if we can find it then  its the bytes in the message and we need
+            // to read it
 
-    // read until  we get the 0\r\n\r\n line
-    // read the number of bytes first, then the body
-    char* charbuf;
-    while (chunk_size > 0) {
-        tmp_buf = "";
-        body_buf = "";
+            // std::cout << "first loop: "
+            //           << body_buf.substr(0, body_buf.find("\r\n")) << "\n";
 
-        size_t bytes_read =
-            boost::asio::read_until(ssl_socket, response, "\r\n");
+            bytes_in_message = std::stoi(
+                body_buf.substr(0, body_buf.find("\r\n")), nullptr, 16);
 
-        if (debug_mode) {
-            std::cout << "-------- Chunk Size --------\n";
-            std::cout << "\n\nbytes_read: " << bytes_read << "\n";
-            std::cout << "response size: " << response.size() << "\n";
-        }
+            // std::cout << bytes_in_message << "\n";
+            body_buf.erase(0, body_buf.find("\r\n") + 2);
+            body += body_buf;
+            bytes_in_message -= body.length();
+            // std::cout << "body1"<< body  << "\n";
+        } else {
+            // read until the  first \r\n, the response might have more  data
+            // but bytes_read will contain until the end of the \r\n
+            size_t bytes_read =
+                boost::asio::read_until(ssl_socket, response, "\r\n");
+            std::istream(&response) >> tmp_buf;
+            body_buf += tmp_buf.substr(0, bytes_read - 2);
+            tmp_buf.erase(0, bytes_read - 2);
 
-        charbuf = new char[bytes_read];
-        std::istream(&response).read(charbuf, bytes_read);
-        tmp_buf = charbuf;
-        delete[] charbuf;
-        if (debug_mode) {
-            std::cout << "tmp_buf: " << escape_string(tmp_buf) << "\n";
-        }
+            // std::cout << "second loop: " << body_buf << "\n";
+            bytes_in_message = std::stoi(body_buf, nullptr, 16);
+            // std::cout << bytes_in_message << "\n";
+            body += tmp_buf;
+            // std::cout << "body2: " << body  << "\n";
+            bytes_in_message -= body.length();
 
-        // remove  \r\n
-        tmp_buf.erase(tmp_buf.find("\r\n"), std::string::npos);
-        // tmp_buf.pop_back();
-        // tmp_buf.pop_back();
-
-        chunk_size = std::stoi(tmp_buf, nullptr, 16);
-        if (debug_mode) {
-            std::cout << "chunk-size (hex): " << escape_string(tmp_buf) << "\n";
-            std::cout << "chunk-size (hex): " << chunk_size << "\n";
-        }
-        tmp_buf = "";
-
-        if (!chunk_size) {
-            break;
-        }
-
-        // read the actual chunk data
-        bytes_read = boost::asio::read_until(ssl_socket, response, "\r\n");
-
-        if (debug_mode) {
-            std::cout << "-------- Chunk Data --------\n";
-            std::cout << "bytes read: " << bytes_read << "\n";
-            std::cout << "response size: " << response.size() << "\n";
-        }
-
-        charbuf = new char[bytes_read];
-        std::istream(&response).read(charbuf, bytes_read);
-        // ss << std::istream(&response).rdbuf();
-        tmp_buf = charbuf;
-        // remove the \r\n
-        tmp_buf.erase(tmp_buf.find("\r\n"), std::string::npos);
-        // tmp_buf.pop_back();
-        // tmp_buf.pop_back();
-
-        delete[] charbuf;
-        body += tmp_buf;
-
-        if (debug_mode) {
-            std::cout << "tmp_buf: " << escape_string(tmp_buf) << "\n";
+            body_buf = "";
+            tmp_buf = "";
         }
     }
 
+    while (bytes_in_message > 0) {
+        // read until  we get the 0\r\n\r\n line
+        // size_t bytes_read =
+        //     boost::asio::read(ssl_socket, response,
+        //                       boost::asio::transfer_exactly(bytes_in_message+2));
+        size_t bytes_read =
+            boost::asio::read_until(ssl_socket, response, "\r\n");
+        // std::cout << "\n\nbytes_read: " << bytes_read << "\n";
+        // std::cout << "response size: " << response.size() << "\n";
+
+        std::ostringstream ss = {};
+        ss << std::istream(&response).rdbuf();
+        tmp_buf = ss.str();
+        // std::cout << "tmp_buf: " <<escape_string(tmp_buf)  << "\n";
+        if (tmp_buf == "0\r\n\r\n") {
+            if (debug_mode) {
+                std::cout << escape_string(body) << "\n\n";
+                std::cout << "--------------------\n";
+                std::cout << body << "\n\n";
+            }
+            break;
+        }
+
+        body_buf += tmp_buf.substr(0, bytes_read - 2);
+        tmp_buf.erase(0, bytes_read);
+
+        body += body_buf;
+        // std::cout << "body_buf: " <<escape_string(body_buf)  << "\n";
+        body_buf = tmp_buf;
+        tmp_buf = "";
+        response.consume(response.size());
+
+        // read the next byte_length
+        bytes_read = boost::asio::read_until(ssl_socket, response, "\r\n");
+        // std::cout << "--------next slice --------\n";
+        // std::cout << "bytes read: " << bytes_read << "\n";
+        // std::cout << "response size: " << response.size() << "\n";
+
+        ss = {};
+        ss << std::istream(&response).rdbuf();
+        tmp_buf = ss.str();
+        // std::cout << "tmp_buf: " << (tmp_buf.length()) << "\n";
+
+        body_buf += tmp_buf.substr(0, bytes_read - 2);
+        tmp_buf.erase(0, bytes_read);
+        // std::cout << "body_buf (number): " << escape_string(body_buf) <<
+        // "\n"; std::cout << "byte to read (hex)" << body_buf << "\n";
+        // std::cout  << "tmp_buf: " << escape_string(tmp_buf) << "\n";
+        bytes_in_message = std::stoi(body_buf, nullptr, 16);
+        // std::cout << "bytes to  read: " << bytes_in_message << "\n";
+        body += tmp_buf;
+
+        // body_buf = "";
+        // tmp_buf = "";
+    }
+    // std::cout << "\n\n" <<  body <<  "\n\n";
     tmp_res.body = body;
     if (debug_mode) {
         std::cout << "--------bytes_in_message==0--------\n";
-
-        std::cout << "response size: " << response.size() << "\n\n";
-        std::cout << "body_buf: " << body_buf << "\n\n";
-        // std::cout << "Body: " << escape_string(body) << "\n\n";
-        std::cout << "Body: " << body << "\n\n";
+        std::cout << "tmp: " << tmp_buf << "\n\n";
+        std::cout << "body_buf: "<< body_buf << "\n\n";
+        std::cout << body << "\n\n";
     }
     // reset the socket
     ssl_socket = boost::asio::ssl::stream<tcp::socket>(io_, ctx_);
