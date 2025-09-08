@@ -66,3 +66,19 @@ Now, if you want to install the library directly to your system:
 ```bash
 sudo cmake install .
 ```
+
+## Linking
+In order to link the library with CMake, you must make sure that OpenSSL and Boost is also installed on your system.
+Once that is finished, it's really simple to install, as you can just call `find_package` and then link the library
+```CMake
+# find the package, as well as boost and openssl
+find_package(http REQUIRED)
+find_package(Boost REQUIRED COMPONENTS thread system asio)
+find_package(OpenSSL REQUIRED)
+
+
+# After the add_executable
+target_link_libraries(target-name PRIVATE http::http)
+target_link_libraries(target-name PRIVATE Boost::headers Boost::thread
+                                              ${OPENSSL_LIBRARIES})
+```
