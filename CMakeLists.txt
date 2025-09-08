@@ -8,11 +8,23 @@ find_package(Boost REQUIRED COMPONENTS thread system asio)
 find_package(OpenSSL REQUIRED)
 
 find_package(Catch2 3 REQUIRED)
-set(SOURCES src/request.cpp src/headers.cpp src/server.cpp src/response.cpp
-            src/http.cpp src/html.cpp src/https_server.cpp)
+set(SOURCES
+    src/request.cpp
+    src/headers.cpp
+    src/server.cpp
+    src/response.cpp
+    src/http.cpp
+    src/html.cpp
+    src/https_server.cpp)
 
-set(HEADERS include/request.h include/headers.h include/server.h
-            include/response.h include/http.h include/html.h include/https_server.h)
+set(HEADERS
+    include/request.h
+    include/headers.h
+    include/server.h
+    include/response.h
+    include/http.h
+    include/html.h
+    include/https_server.h)
 
 add_library(http STATIC ${SOURCES})
 target_include_directories(
@@ -49,24 +61,23 @@ configure_package_config_file(
   "${CMAKE_CURRENT_BINARY_DIR}/httpConfig.cmake"
   INSTALL_DESTINATION lib/cmake/http)
 
-# target_link_libraries(http PRIVATE 
-#                                    ${OPENSSL_LIBRARIES})
-# Install the Config files
+# target_link_libraries(http PRIVATE ${OPENSSL_LIBRARIES}) Install the Config
+# files
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/httpConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/httpConfigVersion.cmake"
         DESTINATION lib/cmake/http)
 
-# target_include_directories(http PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src) Build
-# the  tests
+# Build the  tests
 add_executable(request_test src/request_test.cpp ${SOURCES})
 target_link_libraries(
-  request_test PRIVATE Boost::headers Boost::thread
-                       Catch2::Catch2WithMain ${OPENSSL_LIBRARIES})
+  request_test PRIVATE Boost::headers Boost::thread Catch2::Catch2WithMain
+                       ${OPENSSL_LIBRARIES})
 
 # Build executable
 add_executable(${PROJECT_NAME}_main)
 target_sources(${PROJECT_NAME}_main PRIVATE src/main.cpp ${SOURCES})
-target_link_libraries(${PROJECT_NAME}_main PRIVATE Boost::headers Boost::thread ${OPENSSL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_main PRIVATE Boost::headers Boost::thread
+                                                   ${OPENSSL_LIBRARIES})
 
 # Copy assets folder to build dir
 add_custom_command(

@@ -21,7 +21,12 @@
 #include <string>
 
 Client::Client(boost::asio::io_context& io, boost::asio::ssl::context& ctx)
-    : ssl_socket(io, ctx), socket_(io), resolver_(io), io_(io), ctx_(ctx) {}
+    : ssl_socket(new boost::asio::ssl::stream<tcp::socket>(io, ctx)),
+      socket_(io),
+      resolver_(io),
+      io_(io),
+      ctx_(ctx) {
+      }
 
 bool Client::verify_certificate(bool preverified,
                                 boost::asio::ssl::verify_context& ctx) {
@@ -37,7 +42,7 @@ bool Client::verify_certificate(bool preverified,
 void Client::connect(const tcp::resolver::results_type& endpoints,
                      Headers headers, std::string data) {
     boost::system::error_code ec;
-    boost::asio::connect(ssl_socket.lowest_layer(), endpoints);
+    boost::asio::connect(ssl_socket->lowest_layer(), endpoints);
     handshake(headers, data);
     // boost::asio::async_connect(
     //     ssl_socket.lowest_layer(), endpoints,
@@ -53,7 +58,7 @@ void Client::connect(const tcp::resolver::results_type& endpoints,
 }
 
 void Client::handshake(Headers headers, std::string data) {
-    ssl_socket.handshake(boost::asio::ssl::stream_base::client);
+    ssl_socket->handshake(boost::asio::ssl::stream_base::client);
     send_request(headers, data);
     // ssl_socket.async_handshake(
     //     boost::asio::ssl::stream_base::client,
@@ -84,7 +89,7 @@ void Client::send_request(Headers headers, std::string data) {
 
     // std::cout << "\n" << get_request << "\n";
     size_t length = boost::asio::write(
-        ssl_socket, boost::asio::buffer(get_request, get_request.length()));
+        *ssl_socket, boost::asio::buffer(get_request, get_request.length()));
     receive_response(length);
 
     // boost::asio::async_write(
@@ -141,6 +146,11 @@ Response Client::fetch(std::string url, std::string method, Headers headers,
     auto endpoints = resolver_.resolve(host_, port_);
     if (port_ == "443") {
         try {
+            std::string sni = split(url.substr(8),"/")[0];
+            SSL_set_tlsext_host_name(ssl_socket->native_handle(),sni.c_str());
+            if(debug_mode){
+                std::cout << "SNI: "<< sni <<  "\n";
+            }
             out = fetch_ssl(endpoints, headers, data);
         } catch (std::exception& e) {
             std::cout << e.what() << "\n";
@@ -253,11 +263,12 @@ Response Client::fetch_http(tcp::resolver::results_type endpoints,
 
 Response Client::fetch_ssl(tcp::resolver::results_type endpoints,
                            Headers headers, std::string data) {
-    SSL_set_tlsext_host_name(ssl_socket.native_handle(), host_.c_str());
-    ssl_socket.set_verify_mode(boost::asio::ssl::verify_peer);
-    ssl_socket.set_verify_callback(std::bind(&Client::verify_certificate, this,
-                                             std::placeholders::_1,
-                                             std::placeholders::_2));
+    SSL_set_tlsext_host_name(ssl_socket->native_handle(), host_.c_str());
+    ssl_socket->set_verify_mode(boost::asio::ssl::verify_peer);
+    ssl_socket->set_verify_callback(std::bind(&Client::verify_certificate, this,
+                                              std::placeholders::_1,
+                                              std::placeholders::_2));
+
     connect(endpoints, headers, data);
     return tmp_res;
 }
@@ -265,7 +276,7 @@ Response Client::fetch_ssl(tcp::resolver::results_type endpoints,
 void Client::receive_response(size_t length) {
     tmp_res = Response();
     // std::cout << "RESPONSE-------\n\n";
-    size_t bytes_read = boost::asio::read_until(ssl_socket, response,
+    boost::asio::read_until(*ssl_socket, response,
                             "\r\n");  // this reads the  status line
 
     std::istream response_stream(&response);
@@ -285,7 +296,9 @@ void Client::receive_response(size_t length) {
 
     unsigned int status_code;
     response_stream >> status_code;
-    // std::cout << "STATUS: " << status_code << "\n";
+    if (debug_mode) {
+        std::cout << "STATUS: " << status_code << "\n";
+    }
     if (status_code) tmp_res.status = StatusCode(status_code);
 
     std::string status_message;
@@ -299,7 +312,7 @@ void Client::receive_response(size_t length) {
                   << "\n";
     }
 
-    boost::asio::read_until(ssl_socket, response,
+    boost::asio::read_until(*ssl_socket, response,
                             "\r\n\r\n");  // read  all  of the headers
     std::string header;
     while (std::getline(response_stream, header) && header != "\r") {
@@ -352,7 +365,7 @@ void Client::ssl_receive_chunked() {
         body_buf = "";
 
         size_t bytes_read =
-            boost::asio::read_until(ssl_socket, response, "\r\n");
+            boost::asio::read_until(*ssl_socket, response, "\r\n");
 
         if (debug_mode) {
             std::cout << "-------- Chunk Size --------\n";
@@ -385,7 +398,7 @@ void Client::ssl_receive_chunked() {
         }
 
         // read the actual chunk data
-        bytes_read = boost::asio::read_until(ssl_socket, response, "\r\n");
+        bytes_read = boost::asio::read_until(*ssl_socket, response, "\r\n");
 
         if (debug_mode) {
             std::cout << "-------- Chunk Data --------\n";
@@ -420,7 +433,8 @@ void Client::ssl_receive_chunked() {
         std::cout << "Body: " << body << "\n\n";
     }
     // reset the socket
-    ssl_socket = boost::asio::ssl::stream<tcp::socket>(io_, ctx_);
+    boost::system::error_code ec;
+    ssl_socket.reset(new boost::asio::ssl::stream<tcp::socket>(io_, ctx_));
 }
 
 void Client::ssl_receive_standard() {
@@ -435,7 +449,7 @@ void Client::ssl_receive_standard() {
 
     // Read until EOF, writing data to output as we go.
     boost::system::error_code error;
-    while (boost::asio::read(ssl_socket, response,
+    while (boost::asio::read(*ssl_socket, response,
                              boost::asio::transfer_at_least(1), error)) {
         // std::cout << &response;
         std::istream(&response) >> body_buf;
@@ -450,5 +464,5 @@ void Client::ssl_receive_standard() {
     // std::cout << body << "\n";
     tmp_res.body = body;
     // reset the socket
-    ssl_socket = boost::asio::ssl::stream<tcp::socket>(io_, ctx_);
+    ssl_socket.reset(new boost::asio::ssl::stream<tcp::socket>(io_, ctx_));
 }

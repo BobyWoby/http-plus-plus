@@ -12,6 +12,7 @@ enum class StatusCode {
     OK = 200,
     BAD_REQUEST = 400,
     FORBIDDEN = 403,
+    NOT_FOUND = 404,
     INTERNAL_ERROR = 500,
 };
 
@@ -90,6 +91,9 @@ void ResponseWriter<sock>::write_status_lines() {
             break;
         case StatusCode::FORBIDDEN:
             error_msg = "Forbidden";
+            break;
+        case StatusCode::NOT_FOUND:
+            error_msg = "Not Found";
             break;
         case StatusCode::INTERNAL_ERROR:
             error_msg = "Internal Server Error";
