@@ -15,6 +15,8 @@ void handler(ResponseWriter<tcp::socket> &writer, Request req) {
     std::string target = req.request_line.target;
     writer.res.headers = Headers::default_headers(writer.res.body.length());
     if (target == "/httpbin/stream/100") {
+        Client client(io, ctx);
+        Headers headers;
         Response res = client.fetch("http://httpbin.org/stream/100", "GET",  Headers(), "");
         // Do something with the response from httpbin here
     } else if (target == "/") {
@@ -33,8 +35,6 @@ int main() {
         ctx.load_verify_file("/etc/ssl/cert.pem");
         // ctx.load_verify_file("./certs/cert.pem");
         ctx.set_default_verify_paths();
-        Client client(io, ctx);
-        Headers headers;
 
         Server s = Server(io, port, &handler);
         io.run();
